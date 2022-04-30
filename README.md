@@ -5,7 +5,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/go-zoox/eventemitter)](https://goreportcard.com/report/github.com/go-zoox/eventemitter)
 [![Coverage Status](https://coveralls.io/repos/github/go-zoox/eventemitter/badge.svg?branch=master)](https://coveralls.io/github/go-zoox/eventemitter?branch=master)
 [![GitHub issues](https://img.shields.io/github/issues/go-zoox/eventemitter.svg)](https://github.com/go-zoox/eventemitter/issues)
-[![Release](https://img.shields.io/github/eventemitter/go-zoox/eventemitter.svg?label=Release)](https://github.com/go-zoox/eventemitter/eventemitters)
+[![Release](https://img.shields.io/github/eventemitter/go-zoox/eventemitter.svg?label=Release)](https://github.com/go-zoox/eventemitter/tags)
 
 ## Installation
 To install the package, run:
