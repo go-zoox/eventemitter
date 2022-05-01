@@ -1,11 +1,13 @@
 package eventemitter
 
-import "sync"
+import (
+	"sync"
+)
 
 // EventEmitter is a simple event emitter.
 type EventEmitter struct {
 	ch       chan *action
-	handlers map[string][]func(payload any)
+	handlers map[string][]Handle
 }
 
 type action struct {
@@ -16,12 +18,12 @@ type action struct {
 // New creates a new EventEmitter.
 func New() *EventEmitter {
 	return &EventEmitter{
-		handlers: make(map[string][]func(payload any)),
+		handlers: make(map[string][]Handle),
 	}
 }
 
 // On registers a handler for the given event type.
-func (e *EventEmitter) On(typ string, handler func(payload any)) {
+func (e *EventEmitter) On(typ string, handler Handle) {
 	e.handlers[typ] = append(e.handlers[typ], handler)
 }
 
@@ -38,13 +40,23 @@ func (e *EventEmitter) Emit(typ string, payload any) {
 }
 
 // Once performs exactly one action.
-func (e *EventEmitter) Once(typ string, handler func(payload any)) {
+func (e *EventEmitter) Once(typ string, handler Handle) {
 	var once sync.Once
-	e.On(typ, func(payload any) {
+	e.On(typ, HandleFunc(func(payload any) {
 		once.Do(func() {
-			handler(payload)
+			handler.Serve(payload)
 		})
-	})
+	}))
+}
+
+// Off removes specify the given event type.
+func (e *EventEmitter) Off(typ string, handler Handle) {
+	for i, h := range e.handlers[typ] {
+		if h.ID() == handler.ID() {
+			e.handlers[typ] = append(e.handlers[typ][:i], e.handlers[typ][i+1:]...)
+			break
+		}
+	}
 }
 
 // Start starts the event worker.
@@ -56,7 +68,7 @@ func (e *EventEmitter) Start() {
 			select {
 			case action := <-e.ch:
 				for _, handler := range e.handlers[action.Type] {
-					handler(action.Payload)
+					handler.Serve(action.Payload)
 				}
 			}
 		}

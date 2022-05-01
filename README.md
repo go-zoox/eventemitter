@@ -24,10 +24,10 @@ import (
 func main(t *testing.T) {
 	e := eventemitter.New()
 	count := 0
-	e.On("test", func(payload any) {
+	e.On("test", eventemitter.HandleFunc(func(payload any) {
 		count++
 		t.Log("test", payload)
-	})
+	}))
 
 	e.Start()
 
