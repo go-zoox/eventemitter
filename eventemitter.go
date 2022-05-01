@@ -1,5 +1,7 @@
 package eventemitter
 
+import "sync"
+
 // EventEmitter is a simple event emitter.
 type EventEmitter struct {
 	ch       chan *action
@@ -33,6 +35,16 @@ func (e *EventEmitter) Emit(typ string, payload any) {
 		Type:    typ,
 		Payload: payload,
 	}
+}
+
+// Once performs exactly one action.
+func (e *EventEmitter) Once(typ string, handler func(payload any)) {
+	var once sync.Once
+	e.On(typ, func(payload any) {
+		once.Do(func() {
+			handler(payload)
+		})
+	})
 }
 
 // Start starts the event worker.
