@@ -8,6 +8,7 @@ import (
 type EventEmitter struct {
 	ch       chan *action
 	handlers map[string][]Handle
+	m        sync.Mutex
 }
 
 type action struct {
@@ -24,7 +25,9 @@ func New() *EventEmitter {
 
 // On registers a handler for the given event type.
 func (e *EventEmitter) On(typ string, handler Handle) {
+	e.m.Lock()
 	e.handlers[typ] = append(e.handlers[typ], handler)
+	e.m.Unlock()
 }
 
 // Emit emits an event.
@@ -51,7 +54,11 @@ func (e *EventEmitter) Once(typ string, handler Handle) {
 
 // Off removes specify the given event type.
 func (e *EventEmitter) Off(typ string, handler Handle) {
-	for i, h := range e.handlers[typ] {
+	e.m.Lock()
+	handlers := e.handlers[typ]
+	e.m.Unlock()
+
+	for i, h := range handlers {
 		if h.ID() == handler.ID() {
 			e.handlers[typ] = append(e.handlers[typ][:i], e.handlers[typ][i+1:]...)
 			break
@@ -67,7 +74,11 @@ func (e *EventEmitter) Start() {
 		for {
 			select {
 			case action := <-e.ch:
-				for _, handler := range e.handlers[action.Type] {
+				e.m.Lock()
+				handlers := e.handlers[action.Type]
+				e.m.Unlock()
+
+				for _, handler := range handlers {
 					handler.Serve(action.Payload)
 				}
 			}
