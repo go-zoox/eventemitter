@@ -10,11 +10,11 @@ func TestEventEmitter(t *testing.T) {
 	e := New()
 	lock := sync.Mutex{}
 	count := 0
-	e.On("test", HandleFunc(func(payload any) {
+	e.On("send.notify", HandleFunc(func(payload any) {
 		lock.Lock()
 		count++
 		lock.Unlock()
-		t.Log("test", payload)
+		t.Log("send.notify", payload)
 	}))
 
 	e.Start()
@@ -24,7 +24,7 @@ func TestEventEmitter(t *testing.T) {
 		index := i
 		wg.Add(1)
 		go func() {
-			e.Emit("test", index)
+			e.Emit("send.notify", index)
 			wg.Done()
 		}()
 	}

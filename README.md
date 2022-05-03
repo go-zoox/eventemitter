@@ -24,9 +24,9 @@ import (
 func main(t *testing.T) {
 	e := eventemitter.New()
 	count := 0
-	e.On("test", eventemitter.HandleFunc(func(payload any) {
+	e.On("send.notify", eventemitter.HandleFunc(func(payload any) {
 		count++
-		t.Log("test", payload)
+		t.Log("send.notify", payload)
 	}))
 
 	e.Start()
@@ -36,7 +36,7 @@ func main(t *testing.T) {
 		index := i
 		wg.Add(1)
 		go func() {
-			e.Emit("test", index)
+			e.Emit("send.notify", index)
 			wg.Done()
 		}()
 	}
