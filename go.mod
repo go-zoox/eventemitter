@@ -1,4 +1,4 @@
-module github.com/go-zoox/waitgroup
+module github.com/go-zoox/eventemitter
 
 go 1.18
 
