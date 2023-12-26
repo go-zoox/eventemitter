@@ -2,6 +2,8 @@ package eventemitter
 
 import (
 	"sync"
+
+	"github.com/go-zoox/logger"
 )
 
 // EventEmitter is a simple event emitter.
@@ -86,10 +88,9 @@ func (e *EventEmitter) Off(typ string, handler Handle) {
 
 // Start starts the event worker.
 func (e *EventEmitter) Start() {
-	if e.isStarted {
+	if e.ch != nil {
 		return
 	}
-	e.isStarted = true
 
 	e.ch = make(chan *action)
 
@@ -102,7 +103,11 @@ func (e *EventEmitter) Start() {
 				e.m.Unlock()
 
 				for _, handler := range handlers {
-					handler.Serve(action.Payload)
+					go func(handler Handle) {
+						if err := handler.Serve(action.Payload); err != nil {
+							logger.Errorf("event handler error: %v (type: %s)", err, action.Type)
+						}
+					}(handler)
 				}
 			}
 		}
