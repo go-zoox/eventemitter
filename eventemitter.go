@@ -8,7 +8,9 @@ import (
 
 // EventEmitter is a simple event emitter.
 type EventEmitter struct {
-	ch       chan *action
+	actionCh chan *action
+	quitCh   chan struct{}
+
 	handlers map[string][]Handle
 	m        sync.Mutex
 
@@ -52,11 +54,11 @@ func (e *EventEmitter) On(typ string, handler Handle) {
 
 // Emit emits an event.
 func (e *EventEmitter) Emit(typ string, payload any) {
-	if e.ch == nil {
+	if e.actionCh == nil {
 		panic("event worker is not started or stopped	")
 	}
 
-	e.ch <- &action{
+	e.actionCh <- &action{
 		Type:    typ,
 		Payload: payload,
 	}
@@ -88,16 +90,17 @@ func (e *EventEmitter) Off(typ string, handler Handle) {
 
 // Start starts the event worker.
 func (e *EventEmitter) Start() {
-	if e.ch != nil {
+	if e.actionCh != nil {
 		return
 	}
 
-	e.ch = make(chan *action)
+	e.actionCh = make(chan *action)
+	e.quitCh = make(chan struct{})
 
 	go func() {
 		for {
 			select {
-			case action := <-e.ch:
+			case action := <-e.actionCh:
 				e.m.Lock()
 				handlers := e.handlers[action.Type]
 				e.m.Unlock()
@@ -109,6 +112,8 @@ func (e *EventEmitter) Start() {
 						}
 					}(handler)
 				}
+			case <-e.quitCh:
+				return
 			}
 		}
 	}()
@@ -116,6 +121,8 @@ func (e *EventEmitter) Start() {
 
 // Stop stops the event worker.
 func (e *EventEmitter) Stop() {
-	close(e.ch)
-	e.ch = nil
+	e.quitCh <- struct{}{}
+
+	close(e.actionCh)
+	close(e.quitCh)
 }
