@@ -9,6 +9,9 @@ type EventEmitter struct {
 	ch       chan *action
 	handlers map[string][]Handle
 	m        sync.Mutex
+
+	//
+	isStarted bool
 }
 
 type action struct {
@@ -16,11 +19,26 @@ type action struct {
 	Payload any
 }
 
+type Option struct {
+	DisableAutoStart bool `json:"disable-auto-start"`
+}
+
 // New creates a new EventEmitter.
-func New() *EventEmitter {
-	return &EventEmitter{
+func New(opts ...func(opt *Option)) *EventEmitter {
+	opt := &Option{}
+	for _, o := range opts {
+		o(opt)
+	}
+
+	e := &EventEmitter{
 		handlers: make(map[string][]Handle),
 	}
+
+	if !opt.DisableAutoStart {
+		e.Start()
+	}
+
+	return e
 }
 
 // On registers a handler for the given event type.
@@ -68,6 +86,11 @@ func (e *EventEmitter) Off(typ string, handler Handle) {
 
 // Start starts the event worker.
 func (e *EventEmitter) Start() {
+	if e.isStarted {
+		return
+	}
+	e.isStarted = true
+
 	e.ch = make(chan *action)
 
 	go func() {
