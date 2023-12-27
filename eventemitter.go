@@ -1,6 +1,7 @@
 package eventemitter
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/go-zoox/logger"
@@ -87,9 +88,9 @@ func (e *EventEmitter) Off(typ string, handler Handle) {
 }
 
 // Start starts the event worker.
-func (e *EventEmitter) Start() {
+func (e *EventEmitter) Start() error {
 	if e.actionCh != nil {
-		return
+		return fmt.Errorf("event emitter is already started")
 	}
 
 	e.actionCh = make(chan *action)
@@ -115,10 +116,12 @@ func (e *EventEmitter) Start() {
 			}
 		}
 	}()
+
+	return nil
 }
 
 // Stop stops the event worker.
-func (e *EventEmitter) Stop() (err error) {
+func (e *EventEmitter) Stop() error {
 	return safe.Do(func() error {
 		e.quitCh <- struct{}{}
 
