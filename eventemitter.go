@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/go-zoox/logger"
+	"github.com/go-zoox/safe"
 )
 
 // EventEmitter is a simple event emitter.
@@ -117,9 +118,12 @@ func (e *EventEmitter) Start() {
 }
 
 // Stop stops the event worker.
-func (e *EventEmitter) Stop() {
-	e.quitCh <- struct{}{}
+func (e *EventEmitter) Stop() (err error) {
+	return safe.Do(func() error {
+		e.quitCh <- struct{}{}
 
-	close(e.actionCh)
-	close(e.quitCh)
+		close(e.actionCh)
+		close(e.quitCh)
+		return nil
+	})
 }
