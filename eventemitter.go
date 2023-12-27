@@ -13,9 +13,6 @@ type EventEmitter struct {
 
 	handlers map[string][]Handle
 	m        sync.Mutex
-
-	//
-	isStarted bool
 }
 
 type action struct {
