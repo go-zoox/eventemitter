@@ -48,11 +48,17 @@ func (e *EventEmitter) On(typ string, handler Handle) {
 
 	if _, ok := e.chs[typ]; !ok {
 		ch := make(chan *action)
+
 		// worker
 		go func(typ string, ch chan *action) {
 			for {
 				select {
 				case data := <-ch:
+					// @TODO channel closed
+					if data == nil {
+						return
+					}
+
 					for _, cb := range e.handlers[typ] {
 						cb.Serve(data.Payload)
 					}
@@ -127,14 +133,14 @@ func (e *EventEmitter) Stop() error {
 	return safe.Do(func() error {
 		e.quitCh <- struct{}{}
 
-		for _, c := range e.chs {
-			close(c)
-		}
-
 		e.chs = nil
 		e.handlers = nil
 
 		close(e.quitCh)
+
+		for _, c := range e.chs {
+			close(c)
+		}
 		return nil
 	})
 }
