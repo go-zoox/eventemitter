@@ -4,17 +4,16 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/go-zoox/logger"
 	"github.com/go-zoox/safe"
 )
 
 // EventEmitter is a simple event emitter.
 type EventEmitter struct {
-	actionCh chan *action
-	quitCh   chan struct{}
-
+	chs      map[string]chan *action
 	handlers map[string][]Handle
-	m        sync.Mutex
+
+	quitCh chan struct{}
+	m      sync.Mutex
 }
 
 type action struct {
@@ -33,9 +32,7 @@ func New(opts ...func(opt *Option)) *EventEmitter {
 		o(opt)
 	}
 
-	e := &EventEmitter{
-		handlers: make(map[string][]Handle),
-	}
+	e := &EventEmitter{}
 
 	if !opt.DisableAutoStart {
 		e.Start()
@@ -47,17 +44,42 @@ func New(opts ...func(opt *Option)) *EventEmitter {
 // On registers a handler for the given event type.
 func (e *EventEmitter) On(typ string, handler Handle) {
 	e.m.Lock()
+	defer e.m.Unlock()
+
+	if _, ok := e.chs[typ]; !ok {
+		ch := make(chan *action)
+		// worker
+		go func(typ string, ch chan *action) {
+			for {
+				select {
+				case data := <-ch:
+					for _, cb := range e.handlers[typ] {
+						cb.Serve(data.Payload)
+					}
+				case <-e.quitCh:
+					return
+				}
+			}
+		}(typ, ch)
+
+		e.chs[typ] = ch
+	}
+
 	e.handlers[typ] = append(e.handlers[typ], handler)
-	e.m.Unlock()
 }
 
 // Emit emits an event.
 func (e *EventEmitter) Emit(typ string, payload any) {
-	if e.actionCh == nil {
-		panic("event worker is not started or stopped	")
+	if e.chs == nil {
+		panic("event worker is not started or stopped")
 	}
 
-	e.actionCh <- &action{
+	if _, ok := e.chs[typ]; !ok {
+		// panic(fmt.Errorf("event: %s is not registered", typ))
+		return
+	}
+
+	e.chs[typ] <- &action{
 		Type:    typ,
 		Payload: payload,
 	}
@@ -89,33 +111,13 @@ func (e *EventEmitter) Off(typ string, handler Handle) {
 
 // Start starts the event worker.
 func (e *EventEmitter) Start() error {
-	if e.actionCh != nil {
+	if e.chs != nil {
 		return fmt.Errorf("event emitter is already started")
 	}
 
-	e.actionCh = make(chan *action)
+	e.chs = make(map[string]chan *action)
+	e.handlers = make(map[string][]Handle)
 	e.quitCh = make(chan struct{})
-
-	go func() {
-		for {
-			select {
-			case action := <-e.actionCh:
-				e.m.Lock()
-				handlers := e.handlers[action.Type]
-				e.m.Unlock()
-
-				for _, handler := range handlers {
-					go func(handler Handle) {
-						if err := handler.Serve(action.Payload); err != nil {
-							logger.Errorf("event handler error: %v (type: %s)", err, action.Type)
-						}
-					}(handler)
-				}
-			case <-e.quitCh:
-				return
-			}
-		}
-	}()
 
 	return nil
 }
@@ -125,7 +127,13 @@ func (e *EventEmitter) Stop() error {
 	return safe.Do(func() error {
 		e.quitCh <- struct{}{}
 
-		close(e.actionCh)
+		for _, c := range e.chs {
+			close(c)
+		}
+
+		e.chs = nil
+		e.handlers = nil
+
 		close(e.quitCh)
 		return nil
 	})
