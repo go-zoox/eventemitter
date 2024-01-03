@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/go-zoox/logger"
 	"github.com/go-zoox/safe"
 )
 
@@ -59,9 +60,21 @@ func (e *EventEmitter) On(typ string, handler Handle) {
 						return
 					}
 
+					wg := &sync.WaitGroup{}
+
 					for _, cb := range e.handlers[typ] {
-						cb.Serve(data.Payload)
+						wg.Add(1)
+
+						go func(cb Handle) {
+							if err := cb.Serve(data.Payload); err != nil {
+								// @TODO error handling
+								logger.Errorf("failed to handle event: %s", err)
+							}
+							wg.Done()
+						}(cb)
 					}
+
+					wg.Wait()
 				case <-e.quitCh:
 					return
 				}
