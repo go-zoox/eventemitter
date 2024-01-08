@@ -90,7 +90,8 @@ func (e *EventEmitter) On(typ string, handler Handle) {
 // Emit emits an event.
 func (e *EventEmitter) Emit(typ string, payload any) {
 	if e.chs == nil {
-		panic("event worker is not started or stopped")
+		logger.Warnf("[emit][ignore] event worker is not started or stopped")
+		return
 	}
 
 	if _, ok := e.chs[typ]; !ok {
