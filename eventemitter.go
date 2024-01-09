@@ -150,11 +150,13 @@ func (e *EventEmitter) Stop() error {
 		e.chs = nil
 		e.handlers = nil
 
-		close(e.quitCh)
+		// @TODO donot close channel, let gc do its thing
+		//
+		// close(e.quitCh)
+		// for _, c := range e.chs {
+		// 	close(c)
+		// }
 
-		for _, c := range e.chs {
-			close(c)
-		}
 		return nil
 	})
 }
