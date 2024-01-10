@@ -1,6 +1,7 @@
 package eventemitter
 
 import (
+	"context"
 	"sync"
 
 	"github.com/go-zoox/safe"
@@ -17,23 +18,38 @@ type EventEmitter interface {
 type eventemitter struct {
 	sync.Mutex
 
+	ctx      context.Context
 	handlers map[string][]Handler
+	evtCh    chan *evt
+}
+
+type evt struct {
+	event   string
+	payload any
 }
 
 // Option is the option for the event emitter.
 type Option struct {
+	Context context.Context
 }
 
 // New creates a new EventEmitter.
 func New(opts ...func(opt *Option)) EventEmitter {
-	opt := &Option{}
+	opt := &Option{
+		Context: context.Background(),
+	}
 	for _, o := range opts {
 		o(opt)
 	}
 
 	e := &eventemitter{
 		handlers: make(map[string][]Handler),
+		//
+		ctx:   opt.Context,
+		evtCh: make(chan *evt),
 	}
+
+	go e.work()
 
 	return e
 }
@@ -48,26 +64,10 @@ func (e *eventemitter) On(event string, handler Handler) {
 
 // Emit emits an event.
 func (e *eventemitter) Emit(event string, payload any) {
-	e.Lock()
-	handlers, ok := e.handlers[event]
-	e.Unlock()
-
-	if !ok {
-		return
+	e.evtCh <- &evt{
+		event:   event,
+		payload: payload,
 	}
-
-	wg := &sync.WaitGroup{}
-	for _, handler := range handlers {
-		wg.Add(1)
-		go func(handler Handler) {
-			defer wg.Done()
-			safe.Do(func() error {
-				handler.Serve(payload)
-				return nil
-			})
-		}(handler)
-	}
-	wg.Wait()
 }
 
 // Once performs exactly one action.
@@ -89,6 +89,38 @@ func (e *eventemitter) Off(typ string, handler Handler) {
 		if h.ID() == handler.ID() {
 			e.handlers[typ] = append(e.handlers[typ][:i], e.handlers[typ][i+1:]...)
 			break
+		}
+	}
+}
+
+func (e *eventemitter) work() {
+	for {
+		select {
+		case <-e.ctx.Done():
+			return
+		case evt := <-e.evtCh:
+			e.Lock()
+			handlers, ok := e.handlers[evt.event]
+			e.Unlock()
+
+			if !ok {
+				return
+			}
+
+			go func() {
+				wg := &sync.WaitGroup{}
+				for _, handler := range handlers {
+					wg.Add(1)
+					go func(handler Handler) {
+						defer wg.Done()
+						safe.Do(func() error {
+							handler.Serve(evt.payload)
+							return nil
+						})
+					}(handler)
+				}
+				wg.Wait()
+			}()
 		}
 	}
 }
