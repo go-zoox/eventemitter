@@ -7,7 +7,14 @@ import (
 )
 
 // EventEmitter is a simple event emitter.
-type EventEmitter struct {
+type EventEmitter interface {
+	On(event string, handler Handler)
+	Once(event string, handler Handler)
+	Off(event string, handler Handler)
+	Emit(event string, payload any)
+}
+
+type eventemitter struct {
 	sync.Mutex
 
 	handlers map[string][]Handler
@@ -18,13 +25,13 @@ type Option struct {
 }
 
 // New creates a new EventEmitter.
-func New(opts ...func(opt *Option)) *EventEmitter {
+func New(opts ...func(opt *Option)) EventEmitter {
 	opt := &Option{}
 	for _, o := range opts {
 		o(opt)
 	}
 
-	e := &EventEmitter{
+	e := &eventemitter{
 		handlers: make(map[string][]Handler),
 	}
 
@@ -32,7 +39,7 @@ func New(opts ...func(opt *Option)) *EventEmitter {
 }
 
 // On registers a handler for the given event type.
-func (e *EventEmitter) On(event string, handler Handler) {
+func (e *eventemitter) On(event string, handler Handler) {
 	e.Lock()
 	defer e.Unlock()
 
@@ -40,7 +47,7 @@ func (e *EventEmitter) On(event string, handler Handler) {
 }
 
 // Emit emits an event.
-func (e *EventEmitter) Emit(event string, payload any) {
+func (e *eventemitter) Emit(event string, payload any) {
 	e.Lock()
 	handlers, ok := e.handlers[event]
 	e.Unlock()
@@ -64,7 +71,7 @@ func (e *EventEmitter) Emit(event string, payload any) {
 }
 
 // Once performs exactly one action.
-func (e *EventEmitter) Once(typ string, handler Handler) {
+func (e *eventemitter) Once(typ string, handler Handler) {
 	var once sync.Once
 	e.On(typ, HandleFunc(func(payload any) {
 		once.Do(func() {
@@ -74,7 +81,7 @@ func (e *EventEmitter) Once(typ string, handler Handler) {
 }
 
 // Off removes specify the given event type.
-func (e *EventEmitter) Off(typ string, handler Handler) {
+func (e *eventemitter) Off(typ string, handler Handler) {
 	e.Lock()
 	defer e.Unlock()
 
