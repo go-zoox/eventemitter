@@ -49,7 +49,7 @@ func New(opts ...func(opt *Option)) EventEmitter {
 		evtCh: make(chan *evt),
 	}
 
-	go e.work()
+	go e.worker()
 
 	return e
 }
@@ -93,7 +93,7 @@ func (e *eventemitter) Off(typ string, handler Handler) {
 	}
 }
 
-func (e *eventemitter) work() {
+func (e *eventemitter) worker() {
 	for {
 		select {
 		case <-e.ctx.Done():
