@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/go-zoox/logger"
 	"github.com/go-zoox/safe"
 )
 
@@ -113,10 +114,13 @@ func (e *eventemitter) worker() {
 					wg.Add(1)
 					go func(handler Handler) {
 						defer wg.Done()
-						safe.Do(func() error {
+						err := safe.Do(func() error {
 							handler.Serve(evt.payload)
 							return nil
 						})
+						if err != nil {
+							logger.Errorf("[eventemitter] failed to handle event(%s): %s", evt.event, err)
+						}
 					}(handler)
 				}
 				wg.Wait()
