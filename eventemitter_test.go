@@ -17,8 +17,6 @@ func TestEventEmitter(t *testing.T) {
 		t.Log("send.notify", payload)
 	}))
 
-	e.Start()
-
 	wg := &sync.WaitGroup{}
 	for i := 0; i < 10; i++ {
 		index := i
@@ -46,8 +44,6 @@ func TestOnce(t *testing.T) {
 		lock.Unlock()
 		t.Log("test", payload)
 	}))
-
-	e.Start()
 
 	wg := &sync.WaitGroup{}
 	for i := 0; i < 10; i++ {
@@ -78,8 +74,6 @@ func TestOff(t *testing.T) {
 		t.Log("test", payload)
 	})
 	e.On("test", fn)
-
-	e.Start()
 
 	wg := &sync.WaitGroup{}
 	for i := 0; i < 10; i++ {
