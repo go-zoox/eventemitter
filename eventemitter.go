@@ -17,11 +17,14 @@ type EventEmitter interface {
 }
 
 type eventemitter struct {
-	sync.Mutex
+	sync.RWMutex
 
-	ctx      context.Context
-	handlers map[string][]Handler
-	evtCh    chan *evt
+	opt *Option
+
+	ctx context.Context
+
+	eventChans  map[string]chan *evt
+	subscribers map[string][]Handler
 }
 
 type evt struct {
@@ -32,40 +35,86 @@ type evt struct {
 // Option is the option for the event emitter.
 type Option struct {
 	Context context.Context
+	//
+	BufferSize int
 }
 
 // New creates a new EventEmitter.
 func New(opts ...func(opt *Option)) EventEmitter {
 	opt := &Option{
-		Context: context.Background(),
+		Context:    context.Background(),
+		BufferSize: 10,
 	}
 	for _, o := range opts {
 		o(opt)
 	}
 
 	e := &eventemitter{
-		handlers: make(map[string][]Handler),
+		opt: opt,
 		//
-		ctx:   opt.Context,
-		evtCh: make(chan *evt),
+		ctx: opt.Context,
+		//
+		subscribers: make(map[string][]Handler),
+		//
+		eventChans: make(map[string]chan *evt),
 	}
-
-	go e.worker()
 
 	return e
 }
 
 // On registers a handler for the given event type.
-func (e *eventemitter) On(event string, handler Handler) {
+func (e *eventemitter) On(event string, subscriber Handler) {
 	e.Lock()
 	defer e.Unlock()
 
-	e.handlers[event] = append(e.handlers[event], handler)
+	if _, ok := e.eventChans[event]; !ok {
+		eventChan := make(chan *evt, e.opt.BufferSize)
+		e.eventChans[event] = eventChan
+
+		go e.handleEvents(eventChan)
+	}
+
+	e.subscribers[event] = append(e.subscribers[event], subscriber)
+}
+
+// handleEvents 处理特定类型事件的goroutine。
+func (e *eventemitter) handleEvents(eventChan chan *evt) {
+	for {
+		select {
+		case <-e.ctx.Done():
+			return
+		case evt := <-eventChan:
+			e.RLock()
+			subscribers, ok := e.subscribers[evt.event]
+			e.RUnlock()
+			if !ok {
+				break
+			}
+
+			for _, subscriber := range subscribers {
+				err := safe.Do(func() error {
+					subscriber.Serve(evt.payload)
+					return nil
+				})
+				if err != nil {
+					logger.Errorf("[eventemitter] failed to handle event(%s): %s", evt.event, err)
+				}
+			}
+		}
+	}
 }
 
 // Emit emits an event.
 func (e *eventemitter) Emit(event string, payload any) {
-	e.evtCh <- &evt{
+	e.RLock()
+	defer e.RUnlock()
+
+	eventChan, ok := e.eventChans[event]
+	if !ok {
+		return // 没有对应的事件channel，无需操作
+	}
+
+	eventChan <- &evt{
 		event:   event,
 		payload: payload,
 	}
@@ -86,45 +135,10 @@ func (e *eventemitter) Off(typ string, handler Handler) {
 	e.Lock()
 	defer e.Unlock()
 
-	for i, h := range e.handlers[typ] {
+	for i, h := range e.subscribers[typ] {
 		if h.ID() == handler.ID() {
-			e.handlers[typ] = append(e.handlers[typ][:i], e.handlers[typ][i+1:]...)
+			e.subscribers[typ] = append(e.subscribers[typ][:i], e.subscribers[typ][i+1:]...)
 			break
-		}
-	}
-}
-
-func (e *eventemitter) worker() {
-	for {
-		select {
-		case <-e.ctx.Done():
-			return
-		case evt := <-e.evtCh:
-			e.Lock()
-			handlers, ok := e.handlers[evt.event]
-			e.Unlock()
-
-			if !ok {
-				return
-			}
-
-			go func() {
-				wg := &sync.WaitGroup{}
-				for _, handler := range handlers {
-					wg.Add(1)
-					go func(handler Handler) {
-						defer wg.Done()
-						err := safe.Do(func() error {
-							handler.Serve(evt.payload)
-							return nil
-						})
-						if err != nil {
-							logger.Errorf("[eventemitter] failed to handle event(%s): %s", evt.event, err)
-						}
-					}(handler)
-				}
-				wg.Wait()
-			}()
 		}
 	}
 }
