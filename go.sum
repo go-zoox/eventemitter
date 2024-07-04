@@ -1,3 +1,5 @@
+github.com/go-errors/errors v1.5.1 h1:ZwEMSLRCapFLflTpT7NKaAc7ukJ8ZPEjzlxt8rPN8bk=
+github.com/go-errors/errors v1.5.1/go.mod h1:sIVyrIiJhuEF+Pj9Ebtd6P/rEYROXFi3BopGUQ5a5Og=
 github.com/go-zoox/chalk v1.0.1 h1:9s4i74InfcBosCexWixz3eh6DdBkl3McIcLkTI1HjTo=
 github.com/go-zoox/chalk v1.0.1/go.mod h1:z5+qvE9nEJI5uT4px2tyoFa/xxkqf3CUo22KmXLKbNI=
 github.com/go-zoox/datetime v1.1.0 h1:L37HNXrlAjTJuEvNytqoUEs0QZ2CpglM3mqfbqxA+Hg=
@@ -6,8 +8,8 @@ github.com/go-zoox/errors v1.0.2 h1:1NLMoEVlDU1+qrvvPj+rrJXOvQPdeZ3DekVBFrI5PFY=
 github.com/go-zoox/errors v1.0.2/go.mod h1:HJ5NKQb9cu3IbI0Jayw7xZiblLBEIglpaIOMxvQnWnk=
 github.com/go-zoox/logger v1.4.6 h1:zHUaB6KQ9rD/N3hM0JJ3/JCNdgtedf4mVBBNNSyWCOg=
 github.com/go-zoox/logger v1.4.6/go.mod h1:o7ddvv/gMoMa0TomPhHoIz11ZWRbQ92pF6rwYbOY3iQ=
-github.com/go-zoox/safe v1.0.1 h1:JwWK7xCyv7eyzBbwzQvhK/Ajm8gG2Q9Cvd/KXpdF2zI=
-github.com/go-zoox/safe v1.0.1/go.mod h1:lT0iEBmpoia7xfh2bWzdurzdv++4QRUAfeEzIhCnpoA=
+github.com/go-zoox/safe v1.2.0 h1:KSX5XVRQ2431PjoAuHW25bgDsMgKl0q6g8G7ko7DUu8=
+github.com/go-zoox/safe v1.2.0/go.mod h1:g2RrkP7Cg1w80LTkvaI3PiVqc2pSEPLlsjI0+ViS/TA=
 github.com/go-zoox/uuid v0.0.1 h1:txqmDavRTq68gzzqWfJQLorFyUp9a7M2lmq2KcwPGPA=
 github.com/go-zoox/uuid v0.0.1/go.mod h1:0/F4LdfLqFdyqOf7aXoiYXRkXHU324JQ5DZEytXYBPM=
 github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
